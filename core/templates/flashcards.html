@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="card">
+    <h2>🃏 Flashcards</h2>
+    <p>Paste your notes or topic below to generate AI-powered flashcards in English & Hinglish.</p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <textarea
+            name="user_input"
+            rows="6"
+            placeholder="Paste topic or notes for flashcards..."
+            style="width:100%; margin-bottom:15px;"
+        ></textarea>
+
+        <button type="submit" class="btn btn-warning">
+            Generate Flashcards
+        </button>
+    </form>
+
+    {% if error %}
+    <p style="color:red; margin-top:15px;">{{ error }}</p>
+    {% endif %}
+</div>
+
+{% if flashcards %}
+<div class="card">
+    <div class="header">
+        <h3>AI Flashcards</h3>
+        <button class="speaker-btn" onclick="toggleSpeak('flashcardText', this)">
+            🔊 Speak
+        </button>
+    </div>
+
+    <div class="tts-text" id="flashcardText">
+        {{ flashcards|linebreaksbr }}
+    </div>
+</div>
+{% endif %}
+
+<!-- ================= TEXT TO SPEECH ================= -->
+<script>
+const synth = window.speechSynthesis;
+let currentUtterance = null;
+let isSpeaking = false;
+
+function toggleSpeak(textId, btn) {
+    if (isSpeaking) {
+        synth.cancel();
+        isSpeaking = false;
+        btn.innerText = "🔊 Speak";
+        return;
+    }
+
+    const el = document.getElementById(textId);
+    if (!el) return;
+
+    const text = el.innerText.trim();
+    if (!text) return;
+
+    currentUtterance = new SpeechSynthesisUtterance(text);
+    currentUtterance.lang = "en-IN"; // Can be adjusted for Hinglish/Hindi
+    currentUtterance.rate = 1;
+    currentUtterance.pitch = 1;
+
+    currentUtterance.onend = () => {
+        isSpeaking = false;
+        btn.innerText = "🔊 Speak";
+    };
+
+    synth.speak(currentUtterance);
+    isSpeaking = true;
+    btn.innerText = "⏹ Stop";
+}
+</script>
+
+<!-- ================= STYLES ================= -->
+<style>
+.card {
+    background: var(--card-bg);
+    border-left: 5px solid var(--warning-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 25px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.speaker-btn {
+    background: var(--warning-color);
+    color: var(--text-color);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.speaker-btn:hover {
+    background: #e0a800;
+}
+
+.tts-text {
+    margin-top: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="card">
+    <h2>📘 Explain Topic</h2>
+    <p>Paste your topic or upload a PDF to get AI-powered explanations in English & Hinglish.</p>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <textarea
+            name="user_input"
+            rows="6"
+            placeholder="Paste your notes or topic here..."
+        >{{ request.POST.user_input }}</textarea>
+
+        <div style="margin-top:15px; margin-bottom:20px;">
+            <label><strong>Or Upload PDF:</strong></label><br>
+            <input type="file" name="pdf_file" accept=".pdf">
+        </div>
+
+        <button type="submit" name="action" value="explain" class="btn btn-primary">
+            Explain Topic
+        </button>
+    </form>
+
+    {% if error %}
+        <p style="color:red; margin-top:15px;">{{ error }}</p>
+    {% endif %}
+</div>
+
+{% comment %} ================= AI EXPLANATION ================= {% endcomment %}
+{% if explanation %}
+<div class="card">
+    <div class="header">
+        <h3>AI Explanation</h3>
+        <button class="speaker-btn" onclick="toggleSpeak('explanationText', this)">
+            🔊 Speak
+        </button>
+    </div>
+
+    <div class="tts-text" id="explanationText">
+        {{ explanation|linebreaksbr }}
+    </div>
+</div>
+{% else %}
+    {% if request.method == "POST" %}
+    <div class="card" style="border-left-color:#f0ad4e;">
+        <p>No explanation generated. Please try again.</p>
+    </div>
+    {% endif %}
+{% endif %}
+
+<!-- ================= TEXT TO SPEECH ================= -->
+<script>
+const synth = window.speechSynthesis;
+let currentUtterance = null;
+let isSpeaking = false;
+
+function toggleSpeak(textId, btn) {
+    if (isSpeaking) {
+        synth.cancel();
+        isSpeaking = false;
+        btn.innerText = "🔊 Speak";
+        return;
+    }
+
+    const el = document.getElementById(textId);
+    if (!el) return;
+
+    const text = el.innerText.trim();
+    if (!text) return;
+
+    currentUtterance = new SpeechSynthesisUtterance(text);
+    currentUtterance.lang = "en-IN"; // Can be dynamic for Hindi/Hinglish
+    currentUtterance.rate = 1;
+    currentUtterance.pitch = 1;
+
+    currentUtterance.onend = () => {
+        isSpeaking = false;
+        btn.innerText = "🔊 Speak";
+    };
+
+    synth.speak(currentUtterance);
+    isSpeaking = true;
+    btn.innerText = "⏹ Stop";
+}
+</script>
+
+<!-- ================= STYLES ================= -->
+<style>
+.card {
+    background: var(--card-bg);
+    border-left: 5px solid var(--card-border);
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 25px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    transition: background 0.3s, border-color 0.3s;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    resize: vertical;
+}
+
+button.btn {
+    margin-top: 10px;
+}
+
+.speaker-btn {
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.speaker-btn:hover {
+    background: #0056b3;
+}
+
+.tts-text {
+    margin-top: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+</style>
+
+{% endblock %}

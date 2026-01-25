@@ -1,0 +1,30 @@
+{% extends 'base.html' %} 
+
+{% block content %}
+<div class="card">
+    <h1 style="margin-bottom: 10px;">Welcome to Study Genie ✨</h1>
+    <p style="line-height: 1.6; font-size: 1.1rem;">
+        Your AI-powered tutor for fast learning in English, Hinglish, Hindi, Telugu, Bhojpuri.
+    </p>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom: 10px;">What can you do here?</h2>
+    <ul style="padding-left: 20px; line-height: 1.6;">
+        <li>📘 <strong>Explain Topics:</strong> Paste your topic or upload notes/PDF to get a detailed explanation.</li>
+        <li>✂️ <strong>Summarize Notes:</strong> Generate quick revision points in English and Hinglish.</li>
+        <li>🧠 <strong>Quizzes:</strong> Create multiple-choice questions from your material.</li>
+        <li>🃏 <strong>Flashcards:</strong> Turn your notes into Q&A flashcards for easy learning.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom: 10px;">Get Started</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <a href="{% url 'explain' %}" class="btn btn-primary">📘 Explain</a>
+        <a href="{% url 'summarize' %}" class="btn btn-primary">📘 Summarize</a>
+        <a href="{% url 'quiz' %}" class="btn btn-success">🧠 Generate Quiz</a>
+        <a href="{% url 'flashcards' %}" class="btn btn-purple">🃏 Flashcards</a>
+    </div>
+</div>
+{% endblock %}

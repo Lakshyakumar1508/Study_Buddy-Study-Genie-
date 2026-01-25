@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="card">
+    <h2>🧠 Quiz</h2>
+    <p>Generate practice questions from your study material in English & Hinglish.</p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <textarea name="user_input" rows="8" placeholder="Paste text to generate a quiz..."></textarea>
+        <button type="submit" class="btn btn-purple">Generate Quiz</button>
+    </form>
+
+    {% if error %}
+    <p style="color:red; margin-top:10px;">{{ error }}</p>
+    {% endif %}
+</div>
+
+{% if quiz %}
+<div class="card">
+    <div class="header">
+        <h3>Generated Quiz</h3>
+        <button class="speaker-btn" onclick="toggleSpeak('quizText', this)">🔊 Speak</button>
+    </div>
+    <div class="tts-text" id="quizText">
+        {{ quiz|linebreaksbr }}
+    </div>
+    <button onclick="window.print()" class="btn btn-secondary" style="margin-top:15px;">💾 Save as PDF</button>
+</div>
+{% endif %}
+
+<!-- ================= TEXT TO SPEECH ================= -->
+<script>
+const synth = window.speechSynthesis;
+let currentUtterance = null;
+let isSpeaking = false;
+
+function toggleSpeak(textId, btn) {
+    if (isSpeaking) {
+        synth.cancel();
+        isSpeaking = false;
+        btn.innerText = "🔊 Speak";
+        return;
+    }
+
+    const el = document.getElementById(textId);
+    if (!el) return;
+
+    const text = el.innerText.trim();
+    if (!text) return;
+
+    currentUtterance = new SpeechSynthesisUtterance(text);
+    currentUtterance.lang = "en-IN";
+    currentUtterance.rate = 1;
+    currentUtterance.pitch = 1;
+
+    currentUtterance.onend = () => {
+        isSpeaking = false;
+        btn.innerText = "🔊 Speak";
+    };
+
+    synth.speak(currentUtterance);
+    isSpeaking = true;
+    btn.innerText = "⏹ Stop";
+}
+</script>
+
+<!-- ================= STYLES ================= -->
+<style>
+.card {
+    background: var(--card-bg);
+    border-left: 5px solid var(--purple-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 25px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.speaker-btn {
+    background: var(--purple-color);
+    color: var(--text-color);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.speaker-btn:hover {
+    background: #5936a2;
+}
+
+.tts-text {
+    margin-top: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+}
+
+button.btn {
+    padding: 10px 18px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-purple { background: var(--purple-color); color: white; border: none; }
+.btn-secondary { background: #6c757d; color: white; border: none; }
+
+.btn:hover { opacity: 0.9; }
+</style>
+
+{% endblock %}
