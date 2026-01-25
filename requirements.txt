@@ -2,3 +2,4 @@ Django==5.2.10
 google-generativeai
 pdfplumber
 python-dotenv
+gunicorn==21.2.0
