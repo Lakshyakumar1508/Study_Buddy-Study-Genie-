@@ -1,5 +1,6 @@
-Django==5.2.10
-google-generativeai
+Django==4.2.10
+google-generativeai==0.4.1
 pdfplumber
+pillow
 python-dotenv
 gunicorn==21.2.0
