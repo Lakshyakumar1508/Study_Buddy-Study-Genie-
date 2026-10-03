@@ -82,26 +82,36 @@ def _clean_markdown_to_plain_text(md_text: str) -> str:
     text = re.sub(r'`{1,3}([^`]+?)`{1,3}', r'\1', text)
     text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
     text = re.sub(r'^[*\-+\d.]\s+', '', text, flags=re.MULTILINE)
+    text = text.replace('**', '').replace('*', '')
     text = re.sub(r'\n{2,}', '\n', text)
     return text.strip()
 
 def _clean_markdown_html(md_text: str) -> str:
     """
-    Cleans raw markdown formatting quirks (removes stray unclosed asterisks)
+    Cleans raw markdown formatting quirks, ensures NO raw asterisks exist,
     and converts to modern, rich semantic HTML.
     """
     md_text = _extract_text_from_response(md_text)
-    # Fix dangling asterisks like '** word' without close
-    cleaned = re.sub(r'\*\*\s*([^\*\n]+?)\s*\*\*', r'**\1**', md_text)
-    # Fix solitary unclosed bold at end of lines
-    cleaned = re.sub(r'\*\*([^\*\n]+)$', r'**\1**', cleaned, flags=re.MULTILINE)
-    # Remove any remaining lone double asterisks that couldn't be paired
-    cleaned = re.sub(r'(?<!\*)\*\*(?!\*)', '', cleaned)
     
+    # Pre-cleaning: Fix whitespace issues around bold asterisks (e.g. '** word **' -> '**word**')
+    cleaned = re.sub(r'\*\*\s+([^*\n]+?)\s+\*\*', r'**\1**', md_text)
+    cleaned = re.sub(r'\*\*\s+([^*\n]+?)\*\*', r'**\1**', cleaned)
+    cleaned = re.sub(r'\*\*([^*\n]+?)\s+\*\*', r'**\1**', cleaned)
+    # Fix solitary unclosed bold at end of lines
+    cleaned = re.sub(r'\*\*([^*\n]+)$', r'**\1**', cleaned, flags=re.MULTILINE)
+    
+    # Convert markdown to rich semantic HTML
     html = markdown.markdown(
         cleaned,
         extensions=['extra', 'tables', 'nl2br', 'sane_lists']
     )
+    
+    # Post-cleaning: Catch any unparsed **word** left in HTML and convert to <strong>
+    html = re.sub(r'\*\*([^*\n<]+?)\*\*', r'<strong>\1</strong>', html)
+    # Remove any remaining stray asterisks entirely so user NEVER sees raw **
+    html = html.replace('**', '')
+    html = re.sub(r'\\(\*|_)', r'\1', html)
+    
     return html
 
 def _parse_quiz_items(raw_text: str, num_requested: int) -> List[Dict[str, Any]]:
@@ -288,22 +298,46 @@ def study_engine_node(state: StudyBuddyState) -> Dict[str, Any]:
 
     system_prompts = {
         "explain": (
-            "You are Study Buddy, an elite exam tutor for Indian students. "
-            "Your explanations are well-structured, crystal-clear, and pedagogical. "
-            f"{lang_instruction} "
-            "Do NOT include greetings or introductory chit-chat. Start directly with the content. "
-            "Format with Markdown: "
-            "Use ## for Main Headings, ### for Sub-headings, bullet points with bold keywords, and a real-life analogy or exam tip. "
-            "Ensure all bold text has clean matched markdown with no loose unclosed asterisks."
+            "You are Study Buddy, an elite exam tutor for Indian students preparing for board exams, JEE, NEET, and university exams.\n"
+            f"{lang_instruction}\n\n"
+            "TEACHING PHILOSOPHY & QUALITY GUIDELINES:\n"
+            "- Make complex concepts instantly understandable, engaging, and memorable.\n"
+            "- Explain with high pedagogical clarity: start from intuitive everyday analogies, then move into precise technical definitions.\n"
+            "- No greetings, no pleasantries ('Sure, I will explain...'). Start directly with the main title.\n"
+            "- STRICT MARKDOWN FORMATTING: Never produce loose or dangling asterisks (**). Every bold word must be strictly formatted like **Keyword** with no extra space inside.\n\n"
+            "STRUCTURE YOUR ANSWER IN THIS EXACT ORDER:\n"
+            "## 🎯 60-Second Intuition & Overview\n"
+            "> A 2-line plain, relatable explanation that anyone can grasp immediately.\n\n"
+            "## 📖 Formal Definition & Core Principles\n"
+            "- Academic/scientific definition.\n"
+            "- Mathematical laws, equations, or scientific statements.\n\n"
+            "## 🔍 In-Depth Breakdown & How It Works\n"
+            "- Step-by-step mechanism or key properties.\n"
+            "- Start each bullet point with a bold keyword, e.g. '- **Property Name**: Detailed explanation.'\n\n"
+            "## 🌍 Relatable Everyday Examples\n"
+            "- 2-3 vivid real-world examples (e.g. cricket, walking, smartphone sensors, car brakes, rockets, cooking).\n\n"
+            "## ⚠️ Common Mistakes & Exam Traps\n"
+            "- Highlight common misconceptions where students lose marks.\n\n"
+            "## 💡 High-Yield Exam Cheat Sheet\n"
+            "- Formulas, mnemonics, or 1-line golden rules to remember."
         ),
         "summarize": (
-            "You are Study Buddy. Create a high-yield, exam-focused revision summary. "
-            f"{lang_instruction} "
-            "Start directly with: "
-            "## 📌 Quick TL;DR\n(2 concise sentences)\n\n"
-            "## 🔑 Core Concepts & Takeaways\n(bullet points with bold terms)\n\n"
-            "## 💡 Exam Cheat-Sheet & Formulas\n(high-yield exam points)\n"
-            "Keep it crisp, exam-focused, and eliminate fluff."
+            "You are Study Buddy, a master exam tutor creating top-tier revision notes and cheat-sheets for students.\n"
+            f"{lang_instruction}\n\n"
+            "SUMMARY QUALITY & FORMATTING RULES:\n"
+            "- Provide a crisp, high-yield, structured revision breakdown.\n"
+            "- No fluff or chatter. Start directly with the summary.\n"
+            "- STRICT MARKDOWN: Never leave stray or unclosed ** asterisks. Tightly wrap all bold text: **Concept**.\n\n"
+            "STRUCTURE YOUR SUMMARY AS FOLLOWS:\n"
+            "## 📌 Quick Executive TL;DR\n"
+            "> A punchy 2-sentence summary capturing the core essence of the topic.\n\n"
+            "## 🔑 Core Concepts & Essential Definitions\n"
+            "- Every crucial term explained in 1 crisp bullet.\n"
+            "- Start each point with '- **Concept Name**: Definition and role.'\n\n"
+            "## ⚡ Formulas, Equations & Processes\n"
+            "- High-yield mathematical formulas, reactions, or step-by-step workflows.\n\n"
+            "## 💡 Exam Cheat-Sheet & Mnemonics\n"
+            "- Most frequently tested facts and quick memory tricks."
         ),
         "quiz": (
             f"Generate exactly {num_items} multiple choice questions from this text. "

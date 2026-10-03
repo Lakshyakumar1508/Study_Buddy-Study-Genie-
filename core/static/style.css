@@ -578,21 +578,45 @@ a:hover {
 .study-content ul,
 .study-content ol {
   padding-left: 24px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .study-content li {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  line-height: 1.65;
+}
+
+.study-content li > strong:first-child {
+  color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.1);
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-right: 5px;
+  display: inline-block;
+}
+
+[data-theme="dark"] .study-content li > strong:first-child {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.22);
 }
 
 .study-content blockquote {
-  border-left: 4px solid var(--primary-color);
-  padding: 12px 18px;
-  background: var(--bg-card-subtle);
+  padding: 14px 20px;
+  background: rgba(99, 102, 241, 0.05);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
-  margin: 16px 0;
-  font-style: italic;
-  color: var(--text-muted);
+  margin: 18px 0;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary-color);
+}
+
+.study-content hr {
+  border: none;
+  height: 1px;
+  background: var(--border-color);
+  margin: 24px 0;
 }
 
 .study-content pre {
