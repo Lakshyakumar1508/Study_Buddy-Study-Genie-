@@ -5,14 +5,14 @@ from .views import (
     summarize_view,
     quiz_view,
     flashcards_view,
+    api_study_view,
 )
 
 urlpatterns = [
     path("", home_view, name="home"),
-
     path("explain/", explain_view, name="explain"),
     path("summarize/", summarize_view, name="summarize"),
-
     path("quiz/", quiz_view, name="quiz"),
     path("flashcards/", flashcards_view, name="flashcards"),
+    path("api/study/", api_study_view, name="api_study"),
 ]

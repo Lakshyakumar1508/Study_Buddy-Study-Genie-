@@ -1,30 +1,164 @@
-{% extends 'base.html' %} 
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Study Buddy | Supercharged AI Tutor for Students{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h1 style="margin-bottom: 10px;">Welcome to Study Genie ✨</h1>
-    <p style="line-height: 1.6; font-size: 1.1rem;">
-        Your AI-powered tutor for fast learning in English, Hinglish, Hindi, Telugu, Bhojpuri.
-    </p>
+<div class="study-card" style="padding: 40px 30px; text-align: center; background: radial-gradient(circle at 50% 10%, rgba(99, 102, 241, 0.12) 0%, var(--bg-card) 70%);">
+  <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(99, 102, 241, 0.12); color: var(--primary-color); padding: 6px 16px; border-radius: var(--radius-full); font-size: 0.85rem; font-weight: 700; margin-bottom: 16px; border: 1px solid rgba(99, 102, 241, 0.25);">
+    <span>⚡</span> LangGraph & LangChain Powered • Token Optimized
+  </div>
+  
+  <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 14px;">
+    Master Any Topic with <span class="brand-gradient">Study Buddy</span>
+  </h1>
+  <p style="font-size: 1.1rem; color: var(--text-muted); max-width: 650px; margin: 0 auto 30px; line-height: 1.6;">
+    The AI tutor designed specifically for Indian students. Get high-yield exam explanations, quick revision summaries, interactive quizzes, and 3D flashcards in English, Hinglish, and Hindi.
+  </p>
+
+  <!-- Quick Start Action Box -->
+  <div style="max-width: 720px; margin: 0 auto; background: var(--bg-card-subtle); padding: 18px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+    <form action="{% url 'explain' %}" method="POST" id="homeQuickForm">
+      {% csrf_token %}
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <input 
+          type="text" 
+          name="user_input" 
+          id="homeTopicInput"
+          placeholder="Enter any topic (e.g. Newton's Laws in Hinglish, Krebs Cycle, DBMS Normalization)..."
+          style="flex: 1; min-width: 260px; padding: 12px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-main); font-family: inherit; font-size: 0.95rem; outline: none;"
+          required
+        >
+        <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+          <span>🚀</span> Explain Topic
+        </button>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
+        <button type="button" onclick="submitToRoute('{% url 'summarize' %}')" class="btn btn-secondary btn-sm">
+          <span>✂️</span> Summarize
+        </button>
+        <button type="button" onclick="submitToRoute('{% url 'quiz' %}')" class="btn btn-secondary btn-sm">
+          <span>🧠</span> Generate Quiz
+        </button>
+        <button type="button" onclick="submitToRoute('{% url 'flashcards' %}')" class="btn btn-secondary btn-sm">
+          <span>🃏</span> Create Flashcards
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 
-<div class="card">
-    <h2 style="margin-bottom: 10px;">What can you do here?</h2>
-    <ul style="padding-left: 20px; line-height: 1.6;">
-        <li>📘 <strong>Explain Topics:</strong> Paste your topic or upload notes/PDF to get a detailed explanation.</li>
-        <li>✂️ <strong>Summarize Notes:</strong> Generate quick revision points in English and Hinglish.</li>
-        <li>🧠 <strong>Quizzes:</strong> Create multiple-choice questions from your material.</li>
-        <li>🃏 <strong>Flashcards:</strong> Turn your notes into Q&A flashcards for easy learning.</li>
-    </ul>
-</div>
-
-<div class="card">
-    <h2 style="margin-bottom: 10px;">Get Started</h2>
-    <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-        <a href="{% url 'explain' %}" class="btn btn-primary">📘 Explain</a>
-        <a href="{% url 'summarize' %}" class="btn btn-primary">📘 Summarize</a>
-        <a href="{% url 'quiz' %}" class="btn btn-success">🧠 Generate Quiz</a>
-        <a href="{% url 'flashcards' %}" class="btn btn-purple">🃏 Flashcards</a>
+<!-- 4 Core Feature Cards Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px;">
+  
+  <!-- 1. Explain -->
+  <div class="study-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="width: 44px; height: 44px; border-radius: var(--radius-md); background: rgba(99, 102, 241, 0.15); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--primary-color); margin-bottom: 14px;">
+        📘
+      </div>
+      <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">Concept Explainer</h3>
+      <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 16px;">
+        Get crystal-clear breakdowns of tough topics with real-world analogies, clean bullet points, and exam tips.
+      </p>
     </div>
+    <a href="{% url 'explain' %}" class="btn btn-primary btn-sm" style="width: 100%;">
+      Explore Explanations →
+    </a>
+  </div>
+
+  <!-- 2. Summarize -->
+  <div class="study-card card-accent-green" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="width: 44px; height: 44px; border-radius: var(--radius-md); background: rgba(16, 185, 129, 0.15); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--success-color); margin-bottom: 14px;">
+        ✂️
+      </div>
+      <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">Quick Summarizer</h3>
+      <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 16px;">
+        Paste long notes or upload PDFs to extract key TL;DR points, formulas, and high-yield revision cheat-sheets.
+      </p>
+    </div>
+    <a href="{% url 'summarize' %}" class="btn btn-success btn-sm" style="width: 100%;">
+      Summarize Notes →
+    </a>
+  </div>
+
+  <!-- 3. Quiz -->
+  <div class="study-card card-accent-purple" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="width: 44px; height: 44px; border-radius: var(--radius-md); background: rgba(139, 92, 246, 0.15); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--purple-color); margin-bottom: 14px;">
+        🧠
+      </div>
+      <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">Interactive Quiz</h3>
+      <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 16px;">
+        Practice multiple choice questions with live instant score tracking, color-coded answers, and detailed explanations.
+      </p>
+    </div>
+    <a href="{% url 'quiz' %}" class="btn btn-purple btn-sm" style="width: 100%;">
+      Start Quiz Practice →
+    </a>
+  </div>
+
+  <!-- 4. Flashcards -->
+  <div class="study-card card-accent-amber" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="width: 44px; height: 44px; border-radius: var(--radius-md); background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--warning-color); margin-bottom: 14px;">
+        🃏
+      </div>
+      <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">3D Flashcards</h3>
+      <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; margin-bottom: 16px;">
+        Turn notes into flip cards with active recall, hints, card navigation, and smooth 3D animations.
+      </p>
+    </div>
+    <a href="{% url 'flashcards' %}" class="btn btn-amber btn-sm" style="width: 100%;">
+      Practice Flashcards →
+    </a>
+  </div>
+
 </div>
+
+<!-- Why Study Buddy Section -->
+<div class="study-card" style="background: var(--bg-card-subtle);">
+  <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+    <span>🎯</span> Why Students Love Study Buddy
+  </h2>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+    <div style="display: flex; gap: 12px; align-items: flex-start;">
+      <span style="font-size: 1.2rem;">⚡</span>
+      <div>
+        <strong style="color: var(--text-main); display: block; margin-bottom: 4px;">Zero Raw Asterisks or Clutter</strong>
+        <span style="color: var(--text-muted); font-size: 0.9rem;">Every response is cleanly formatted into styled HTML cards, headers, and bullet points without raw markdown artifacts.</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: flex-start;">
+      <span style="font-size: 1.2rem;">🇮🇳</span>
+      <div>
+        <strong style="color: var(--text-main); display: block; margin-bottom: 4px;">Student-Friendly Hinglish & Languages</strong>
+        <span style="color: var(--text-muted); font-size: 0.9rem;">Explain complex engineering, medical, or school concepts in natural conversational Hinglish or English.</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: flex-start;">
+      <span style="font-size: 1.2rem;">💾</span>
+      <div>
+        <strong style="color: var(--text-main); display: block; margin-bottom: 4px;">Token Optimization & Smart Caching</strong>
+        <span style="color: var(--text-muted); font-size: 0.9rem;">LangGraph node architecture trims redundant tokens and caches queries, saving tokens and answering at lightning speed.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function submitToRoute(actionUrl) {
+    const input = document.getElementById('homeTopicInput');
+    if (!input.value.trim()) {
+      input.focus();
+      showToast('Please type a topic first!', '⚠️');
+      return;
+    }
+    const form = document.getElementById('homeQuickForm');
+    form.action = actionUrl;
+    form.submit();
+  }
+</script>
 {% endblock %}

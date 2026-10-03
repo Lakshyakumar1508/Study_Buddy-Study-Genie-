@@ -1,141 +1,218 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Explain Topic | Study Buddy{% endblock %}
+
 {% block content %}
+<!-- Top Form Card -->
+<div class="study-card">
+  <div class="card-header-row">
+    <div>
+      <h1 class="card-title"><span>📘</span> Concept Explainer</h1>
+      <p class="card-subtitle">Paste any topic or upload your study notes / PDF for high-yield explanations.</p>
+    </div>
+    <div class="token-badge">
+      <span>⚡</span> LangGraph Node 1 & 2
+    </div>
+  </div>
 
-<div class="card">
-    <h2>📘 Explain Topic</h2>
-    <p>Paste your topic or upload a PDF to get AI-powered explanations in English & Hinglish.</p>
+  <form method="POST" enctype="multipart/form-data" id="explainForm">
+    {% csrf_token %}
+    <input type="hidden" name="task" value="explain">
 
-    <form method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
-        <textarea
-            name="user_input"
-            rows="6"
-            placeholder="Paste your notes or topic here..."
-        >{{ request.POST.user_input }}</textarea>
+    <div class="input-group">
+      <label class="input-label" for="user_input">Study Topic or Notes:</label>
+      <textarea 
+        name="user_input" 
+        id="user_input" 
+        class="input-textarea" 
+        rows="5" 
+        placeholder="Type or paste a concept here (e.g. 'Photosynthesis light reaction in Hinglish', 'OS Virtual Memory and Paging', 'Differential Equations')..."
+      >{{ user_input }}</textarea>
+    </div>
 
-        <div style="margin-top:15px; margin-bottom:20px;">
-            <label><strong>Or Upload PDF:</strong></label><br>
-            <input type="file" name="pdf_file" accept=".pdf">
+    <!-- Drag & Drop PDF Dropzone -->
+    <div class="input-group">
+      <label class="input-label">Or Upload Study Material (PDF):</label>
+      <div class="file-dropzone" id="pdfDropzone">
+        <input type="file" name="pdf_file" id="pdfFileInput" accept=".pdf">
+        <div class="dropzone-content">
+          <span class="dropzone-icon">📁</span>
+          <span style="font-weight: 600;">Drag & drop your PDF notes here, or <span style="color:var(--primary-color);">browse</span></span>
+          <span style="font-size: 0.82rem; color: var(--text-muted);">Supports lecture notes, slides, and syllabus PDFs</span>
         </div>
+        <div class="file-name-preview" id="fileNamePreview"></div>
+      </div>
+    </div>
 
-        <button type="submit" name="action" value="explain" class="btn btn-primary">
-            Explain Topic
+    <!-- Options Bar -->
+    <div class="form-options-row">
+      <div class="option-item">
+        <label for="languageSelect" style="font-weight: 600;">🌐 Language:</label>
+        <select name="language" id="languageSelect" class="select-custom">
+          <option value="Auto" {% if language == 'Auto' %}selected{% endif %}>Auto (Same as input)</option>
+          <option value="Hinglish" {% if language == 'Hinglish' %}selected{% endif %}>Hinglish (Easy Indian Student Style)</option>
+          <option value="English" {% if language == 'English' %}selected{% endif %}>English (Crisp Academic)</option>
+          <option value="Hindi" {% if language == 'Hindi' %}selected{% endif %}>Hindi (हिन्दी)</option>
+          <option value="Telugu" {% if language == 'Telugu' %}selected{% endif %}>Telugu (తెలుగు)</option>
+          <option value="Bhojpuri" {% if language == 'Bhojpuri' %}selected{% endif %}>Bhojpuri</option>
+        </select>
+      </div>
+
+      <div style="margin-left: auto; display: flex; gap: 10px;">
+        <button type="submit" id="explainSubmitBtn" class="btn btn-primary">
+          <span id="btnIcon">⚡</span> <span id="btnText">Explain Topic</span>
         </button>
-    </form>
+      </div>
+    </div>
+  </form>
 
-    {% if error %}
-        <p style="color:red; margin-top:15px;">{{ error }}</p>
-    {% endif %}
+  {% if error %}
+  <div style="margin-top: 16px; padding: 12px 18px; border-radius: var(--radius-md); background: rgba(239, 68, 68, 0.12); color: var(--danger-color); border: 1px solid rgba(239, 68, 68, 0.25); font-weight: 600; display: flex; align-items: center; gap: 8px;">
+    <span>⚠️</span> {{ error }}
+  </div>
+  {% endif %}
 </div>
 
-{% comment %} ================= AI EXPLANATION ================= {% endcomment %}
-{% if explanation %}
-<div class="card">
-    <div class="header">
-        <h3>AI Explanation</h3>
-        <button class="speaker-btn" onclick="toggleSpeak('explanationText', this)">
-            🔊 Speak
-        </button>
-    </div>
-
-    <div class="tts-text" id="explanationText">
-        {{ explanation|linebreaksbr }}
-    </div>
+<!-- Loading Skeleton (Shown during AJAX request) -->
+<div class="loading-skeleton" id="loadingSkeleton">
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+    <div class="skeleton-pulse" style="width: 32px; height: 32px; border-radius: 50%;"></div>
+    <div class="skeleton-pulse" style="width: 220px; height: 22px;"></div>
+  </div>
+  <div class="skeleton-pulse" style="width: 90%;"></div>
+  <div class="skeleton-pulse" style="width: 95%;"></div>
+  <div class="skeleton-pulse" style="width: 80%;"></div>
+  <div class="skeleton-pulse" style="width: 88%;"></div>
+  <div class="skeleton-pulse" style="width: 70%;"></div>
 </div>
-{% else %}
-    {% if request.method == "POST" %}
-    <div class="card" style="border-left-color:#f0ad4e;">
-        <p>No explanation generated. Please try again.</p>
-    </div>
-    {% endif %}
-{% endif %}
 
-<!-- ================= TEXT TO SPEECH ================= -->
+<!-- AI Explanation Output Card -->
+<div class="study-card output-card" id="outputCard" {% if not explanation_html %}style="display:none;"{% endif %}>
+  <div class="output-toolbar">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>✨</span> High-Yield Explanation
+      </h2>
+      <span class="token-badge" id="outputTokenBadge">
+        {% if is_cached %}
+          ⚡ Instant Cache Hit (0 Tokens)
+        {% elif tokens_saved > 0 %}
+          ⚡ ~{{ tokens_saved }} Tokens Saved
+        {% else %}
+          ⚡ Token Optimized
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="toolbar-actions">
+      <button type="button" class="btn btn-secondary btn-sm" id="copyBtn" onclick="copyExplanation()">
+        <span>📋</span> Copy Notes
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" id="ttsBtn" onclick="speakExplanation()">
+        <span>🔊</span> Read Aloud
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">
+        <span>💾</span> Export PDF
+      </button>
+    </div>
+  </div>
+
+  <div class="study-content" id="studyContentArea">
+    {{ explanation_html|safe }}
+  </div>
+
+  <!-- Hidden Plain Text for Clean Speech Synthesis -->
+  <div id="cleanTtsText" style="display: none;">
+    {{ clean_tts_text }}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-const synth = window.speechSynthesis;
-let currentUtterance = null;
-let isSpeaking = false;
+  setupDropzone('pdfDropzone', 'pdfFileInput', 'fileNamePreview');
 
-function toggleSpeak(textId, btn) {
-    if (isSpeaking) {
-        synth.cancel();
-        isSpeaking = false;
-        btn.innerText = "🔊 Speak";
-        return;
+  let currentPlainText = document.getElementById('cleanTtsText').innerText.trim();
+
+  function copyExplanation() {
+    const content = document.getElementById('studyContentArea').innerText;
+    copyCleanText(content);
+  }
+
+  function speakExplanation() {
+    const ttsBtn = document.getElementById('ttsBtn');
+    const textToSpeak = currentPlainText || document.getElementById('studyContentArea').innerText;
+    handleTTS(textToSpeak, ttsBtn);
+  }
+
+  // Fast Async Submission
+  const form = document.getElementById('explainForm');
+  const submitBtn = document.getElementById('explainSubmitBtn');
+  const skeleton = document.getElementById('loadingSkeleton');
+  const outputCard = document.getElementById('outputCard');
+  const contentArea = document.getElementById('studyContentArea');
+  const ttsStorage = document.getElementById('cleanTtsText');
+  const tokenBadge = document.getElementById('outputTokenBadge');
+
+  form.addEventListener('submit', async (e) => {
+    const textVal = document.getElementById('user_input').value.trim();
+    const fileVal = document.getElementById('pdfFileInput').files[0];
+
+    if (!textVal && !fileVal) {
+      e.preventDefault();
+      showToast('Please enter a topic or select a PDF', '⚠️');
+      return;
     }
 
-    const el = document.getElementById(textId);
-    if (!el) return;
+    // Use AJAX for instantaneous response without full-page reloads
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>⏳</span> Processing...';
+    skeleton.style.display = 'block';
+    outputCard.style.display = 'none';
 
-    const text = el.innerText.trim();
-    if (!text) return;
+    try {
+      const formData = new FormData(form);
+      const response = await fetch('/api/study/', {
+        method: 'POST',
+        body: formData
+      });
 
-    currentUtterance = new SpeechSynthesisUtterance(text);
-    currentUtterance.lang = "en-IN"; // Can be dynamic for Hindi/Hinglish
-    currentUtterance.rate = 1;
-    currentUtterance.pitch = 1;
+      const data = await response.json();
+      skeleton.style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>⚡</span> Explain Topic';
 
-    currentUtterance.onend = () => {
-        isSpeaking = false;
-        btn.innerText = "🔊 Speak";
-    };
+      if (!data.success) {
+        showToast(data.error || 'Failed to explain topic', '⚠️');
+        return;
+      }
 
-    synth.speak(currentUtterance);
-    isSpeaking = true;
-    btn.innerText = "⏹ Stop";
-}
+      // Populate Clean HTML & TTS
+      contentArea.innerHTML = data.html;
+      ttsStorage.innerText = data.clean_text;
+      currentPlainText = data.clean_text;
+
+      if (data.cached) {
+        tokenBadge.innerText = '⚡ Instant Cache Hit (0 Tokens)';
+      } else if (data.tokens_saved > 0) {
+        tokenBadge.innerText = `⚡ ~${data.tokens_saved} Tokens Saved`;
+      } else {
+        tokenBadge.innerText = '⚡ Token Optimized';
+      }
+
+      outputCard.style.display = 'block';
+      outputCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast('Explanation ready!', '✨');
+
+    } catch (err) {
+      skeleton.style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>⚡</span> Explain Topic';
+      // Fallback to normal form submit if fetch had network issue
+      form.submit();
+    }
+  });
 </script>
-
-<!-- ================= STYLES ================= -->
-<style>
-.card {
-    background: var(--card-bg);
-    border-left: 5px solid var(--card-border);
-    padding: 20px;
-    border-radius: 8px;
-    margin-top: 25px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    transition: background 0.3s, border-color 0.3s;
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-textarea {
-    width: 100%;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    resize: vertical;
-}
-
-button.btn {
-    margin-top: 10px;
-}
-
-.speaker-btn {
-    background: var(--primary-color);
-    color: #fff;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.speaker-btn:hover {
-    background: #0056b3;
-}
-
-.tts-text {
-    margin-top: 12px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-}
-</style>
-
 {% endblock %}

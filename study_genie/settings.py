@@ -32,10 +32,13 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     "study-buddy-study-genie-1.onrender.com",
-    ".onrender.com",  # optional: allow any subdomain of onrender.com
+    ".onrender.com",
     "localhost",
     "127.0.0.1",
+    "testserver",
+    "*",
 ]
+
 
 
 # Application definition

@@ -1,117 +1,359 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}3D Flashcards | Study Buddy{% endblock %}
+
 {% block content %}
+<!-- Top Form Card -->
+<div class="study-card card-accent-amber">
+  <div class="card-header-row">
+    <div>
+      <h1 class="card-title"><span>🃏</span> Active Recall Flashcards</h1>
+      <p class="card-subtitle">Generate 3D interactive flashcards for fast spaced repetition and exam revision.</p>
+    </div>
+    <div class="token-badge">
+      <span>⚡</span> Spaced Repetition Engine
+    </div>
+  </div>
 
-<div class="card">
-    <h2>🃏 Flashcards</h2>
-    <p>Paste your notes or topic below to generate AI-powered flashcards in English & Hinglish.</p>
+  <form method="POST" enctype="multipart/form-data" id="flashcardForm">
+    {% csrf_token %}
+    <input type="hidden" name="task" value="flashcards">
 
-    <form method="POST">
-        {% csrf_token %}
-        <textarea
-            name="user_input"
-            rows="6"
-            placeholder="Paste topic or notes for flashcards..."
-            style="width:100%; margin-bottom:15px;"
-        ></textarea>
-
-        <button type="submit" class="btn btn-warning">
-            Generate Flashcards
-        </button>
-    </form>
-
-    {% if error %}
-    <p style="color:red; margin-top:15px;">{{ error }}</p>
-    {% endif %}
-</div>
-
-{% if flashcards %}
-<div class="card">
-    <div class="header">
-        <h3>AI Flashcards</h3>
-        <button class="speaker-btn" onclick="toggleSpeak('flashcardText', this)">
-            🔊 Speak
-        </button>
+    <div class="input-group">
+      <label class="input-label" for="user_input">Study Notes or Concepts:</label>
+      <textarea 
+        name="user_input" 
+        id="user_input" 
+        class="input-textarea" 
+        rows="5" 
+        placeholder="Paste notes, definitions, formulas, or history dates to convert into flashcards..."
+      >{{ user_input }}</textarea>
     </div>
 
-    <div class="tts-text" id="flashcardText">
-        {{ flashcards|linebreaksbr }}
+    <!-- Drag & Drop PDF Dropzone -->
+    <div class="input-group">
+      <label class="input-label">Or Upload Notes (PDF):</label>
+      <div class="file-dropzone" id="pdfDropzone">
+        <input type="file" name="pdf_file" id="pdfFileInput" accept=".pdf">
+        <div class="dropzone-content">
+          <span class="dropzone-icon" style="color:var(--warning-color);">🃏</span>
+          <span style="font-weight: 600;">Drag & drop your PDF notes here, or <span style="color:var(--warning-color);">browse</span></span>
+          <span style="font-size: 0.82rem; color: var(--text-muted);">High-yield terms and definitions are converted into Q&A cards</span>
+        </div>
+        <div class="file-name-preview" id="fileNamePreview"></div>
+      </div>
     </div>
-</div>
-{% endif %}
 
-<!-- ================= TEXT TO SPEECH ================= -->
+    <!-- Options Bar -->
+    <div class="form-options-row">
+      <div class="option-item">
+        <label for="numCards" style="font-weight: 600;">🔢 Number of Cards:</label>
+        <select name="num_cards" id="numCards" class="select-custom">
+          <option value="3" {% if num_cards == 3 %}selected{% endif %}>3 Cards</option>
+          <option value="5" {% if num_cards == 5 %}selected{% endif %}>5 Cards (Recommended)</option>
+          <option value="10" {% if num_cards == 10 %}selected{% endif %}>10 Cards (Full Chapter)</option>
+        </select>
+      </div>
+
+      <div class="option-item">
+        <label for="languageSelect" style="font-weight: 600;">🌐 Language:</label>
+        <select name="language" id="languageSelect" class="select-custom">
+          <option value="Auto" {% if language == 'Auto' %}selected{% endif %}>Auto (Same as input)</option>
+          <option value="Hinglish" {% if language == 'Hinglish' %}selected{% endif %}>Hinglish</option>
+          <option value="English" {% if language == 'English' %}selected{% endif %}>English</option>
+          <option value="Hindi" {% if language == 'Hindi' %}selected{% endif %}>Hindi</option>
+        </select>
+      </div>
+
+      <div style="margin-left: auto; display: flex; gap: 10px;">
+        <button type="submit" id="flashcardSubmitBtn" class="btn btn-amber">
+          <span>⚡</span> Create Flashcard Deck
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {% if error %}
+  <div style="margin-top: 16px; padding: 12px 18px; border-radius: var(--radius-md); background: rgba(239, 68, 68, 0.12); color: var(--danger-color); border: 1px solid rgba(239, 68, 68, 0.25); font-weight: 600; display: flex; align-items: center; gap: 8px;">
+    <span>⚠️</span> {{ error }}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Loading Skeleton -->
+<div class="loading-skeleton" id="loadingSkeleton">
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+    <div class="skeleton-pulse" style="width: 32px; height: 32px; border-radius: 50%;"></div>
+    <div class="skeleton-pulse" style="width: 220px; height: 22px;"></div>
+  </div>
+  <div class="skeleton-pulse" style="height: 280px; border-radius: 18px; margin: 0 auto; max-width: 600px;"></div>
+</div>
+
+<!-- 3D Flashcards Output Card -->
+<div class="study-card output-card card-accent-amber" id="outputCard" {% if not flashcard_items %}style="display:none;"{% endif %}>
+  <div class="output-toolbar">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>🃏</span> Interactive Flashcard Deck
+      </h2>
+      <span class="token-badge" id="outputTokenBadge">
+        {% if is_cached %}
+          ⚡ Instant Cache Hit (0 Tokens)
+        {% elif tokens_saved > 0 %}
+          ⚡ ~{{ tokens_saved }} Tokens Saved
+        {% else %}
+          ⚡ Structured Format
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="toolbar-actions">
+      <button type="button" class="btn btn-secondary btn-sm" id="viewModeBtn" onclick="toggleViewMode()">
+        <span>📑</span> Grid View
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">
+        <span>💾</span> Print Deck
+      </button>
+    </div>
+  </div>
+
+  <!-- Single Card Interactive 3D Deck View -->
+  <div id="deckInteractiveView" class="flashcards-wrapper">
+    <!-- Progress Indicator -->
+    <div style="display: flex; justify-content: space-between; width: 100%; max-width: 620px; font-weight: 600; font-size: 0.9rem; color: var(--text-muted);">
+      <span id="cardCounterText">Card 1 of 5</span>
+      <span style="cursor: pointer; color: var(--primary-color);" onclick="flipCurrentCard()">👆 Click card to flip</span>
+    </div>
+
+    <div class="flashcard-progress-bar">
+      <div class="flashcard-progress-fill" id="progressFill" style="width: 20%;"></div>
+    </div>
+
+    <!-- 3D Perspective Card Stage -->
+    <div class="flashcard-stage" onclick="flipCurrentCard()">
+      <div class="flashcard-inner" id="flashcardInner">
+        <!-- Front Face -->
+        <div class="flashcard-face flashcard-front">
+          <div class="card-pill-tag pill-front">Question / Prompt</div>
+          <div class="card-main-text" id="cardFrontText">Card Front</div>
+          <div class="card-hint-row" id="cardHintRow">
+            <span>💡</span> <span id="cardHintText">Hint available</span>
+          </div>
+        </div>
+
+        <!-- Back Face -->
+        <div class="flashcard-face flashcard-back">
+          <div class="card-pill-tag pill-back">Answer / Explanation</div>
+          <div class="card-main-text" id="cardBackText" style="color: #065f46;">Card Back</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Click to flip back</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div class="flashcard-nav-controls">
+      <button type="button" class="btn btn-secondary" onclick="prevCard()" id="prevBtn">
+        ← Previous
+      </button>
+      <button type="button" class="btn btn-amber" onclick="flipCurrentCard()">
+        🔄 Flip Card
+      </button>
+      <button type="button" class="btn btn-primary" onclick="nextCard()" id="nextBtn">
+        Next →
+      </button>
+    </div>
+  </div>
+
+  <!-- All Cards Grid View (Hidden by default, useful for quick review and print) -->
+  <div id="deckGridView" style="display: none; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 15px;">
+    <!-- Populated by JavaScript -->
+  </div>
+
+  <!-- Hidden JSON storage -->
+  <div id="flashcardsJsonData" style="display: none;">
+    {{ flashcards_json }}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-const synth = window.speechSynthesis;
-let currentUtterance = null;
-let isSpeaking = false;
+  setupDropzone('pdfDropzone', 'pdfFileInput', 'fileNamePreview');
 
-function toggleSpeak(textId, btn) {
-    if (isSpeaking) {
-        synth.cancel();
-        isSpeaking = false;
-        btn.innerText = "🔊 Speak";
-        return;
+  let cards = [];
+  try {
+    const rawJson = document.getElementById('flashcardsJsonData').innerText.trim();
+    if (rawJson) cards = JSON.parse(rawJson);
+  } catch (e) {
+    cards = [];
+  }
+
+  let currentIndex = 0;
+  let isFlipped = false;
+  let isGridView = false;
+
+  function updateDeckDisplay() {
+    if (!cards || cards.length === 0) return;
+
+    const current = cards[currentIndex];
+    document.getElementById('cardCounterText').innerText = `Card ${currentIndex + 1} of ${cards.length}`;
+    document.getElementById('cardFrontText').innerText = current.front || '';
+    document.getElementById('cardBackText').innerText = current.back || '';
+    
+    const hintEl = document.getElementById('cardHintRow');
+    if (current.hint) {
+      hintEl.style.display = 'flex';
+      document.getElementById('cardHintText').innerText = current.hint;
+    } else {
+      hintEl.style.display = 'none';
     }
 
-    const el = document.getElementById(textId);
-    if (!el) return;
+    // Reset flip
+    const inner = document.getElementById('flashcardInner');
+    inner.classList.remove('flipped');
+    isFlipped = false;
 
-    const text = el.innerText.trim();
-    if (!text) return;
+    // Progress
+    const pct = ((currentIndex + 1) / cards.length) * 100;
+    document.getElementById('progressFill').style.width = `${pct}%`;
 
-    currentUtterance = new SpeechSynthesisUtterance(text);
-    currentUtterance.lang = "en-IN"; // Can be adjusted for Hinglish/Hindi
-    currentUtterance.rate = 1;
-    currentUtterance.pitch = 1;
+    // Button states
+    document.getElementById('prevBtn').disabled = (currentIndex === 0);
+    document.getElementById('nextBtn').disabled = (currentIndex === cards.length - 1);
+  }
 
-    currentUtterance.onend = () => {
-        isSpeaking = false;
-        btn.innerText = "🔊 Speak";
-    };
+  function flipCurrentCard() {
+    const inner = document.getElementById('flashcardInner');
+    isFlipped = !isFlipped;
+    if (isFlipped) {
+      inner.classList.add('flipped');
+    } else {
+      inner.classList.remove('flipped');
+    }
+  }
 
-    synth.speak(currentUtterance);
-    isSpeaking = true;
-    btn.innerText = "⏹ Stop";
-}
+  function nextCard() {
+    if (currentIndex < cards.length - 1) {
+      currentIndex++;
+      updateDeckDisplay();
+    }
+  }
+
+  function prevCard() {
+    if (currentIndex > 0) {
+      currentIndex--;
+      updateDeckDisplay();
+    }
+  }
+
+  function toggleViewMode() {
+    isGridView = !isGridView;
+    const interactiveView = document.getElementById('deckInteractiveView');
+    const gridView = document.getElementById('deckGridView');
+    const btn = document.getElementById('viewModeBtn');
+
+    if (isGridView) {
+      interactiveView.style.display = 'none';
+      gridView.style.display = 'grid';
+      btn.innerHTML = '<span>🃏</span> Deck Mode';
+      renderGridView();
+    } else {
+      interactiveView.style.display = 'flex';
+      gridView.style.display = 'none';
+      btn.innerHTML = '<span>📑</span> Grid View';
+      updateDeckDisplay();
+    }
+  }
+
+  function renderGridView() {
+    const grid = document.getElementById('deckGridView');
+    grid.innerHTML = '';
+    cards.forEach((c, idx) => {
+      const cardEl = document.createElement('div');
+      cardEl.className = 'quiz-item-card';
+      cardEl.innerHTML = `
+        <div style="font-weight: 700; color: var(--warning-color); margin-bottom: 6px; font-size: 0.85rem;">CARD ${idx + 1}</div>
+        <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 10px;">${c.front}</div>
+        <div style="padding: 10px 14px; background: rgba(16, 185, 129, 0.08); border-radius: 6px; color: var(--text-main); font-size: 0.95rem; border-left: 3px solid var(--success-color);">
+          <strong>Answer:</strong> ${c.back}
+        </div>
+      `;
+      grid.appendChild(cardEl);
+    });
+  }
+
+  // Fast Async Submission
+  const form = document.getElementById('flashcardForm');
+  const submitBtn = document.getElementById('flashcardSubmitBtn');
+  const skeleton = document.getElementById('loadingSkeleton');
+  const outputCard = document.getElementById('outputCard');
+  const tokenBadge = document.getElementById('outputTokenBadge');
+
+  form.addEventListener('submit', async (e) => {
+    const textVal = document.getElementById('user_input').value.trim();
+    const fileVal = document.getElementById('pdfFileInput').files[0];
+
+    if (!textVal && !fileVal) {
+      e.preventDefault();
+      showToast('Please enter text or select a PDF', '⚠️');
+      return;
+    }
+
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>⏳</span> Creating Deck...';
+    skeleton.style.display = 'block';
+    outputCard.style.display = 'none';
+
+    try {
+      const formData = new FormData(form);
+      const response = await fetch('/api/study/', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      skeleton.style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>⚡</span> Create Flashcard Deck';
+
+      if (!data.success) {
+        showToast(data.error || 'Failed to create flashcards', '⚠️');
+        return;
+      }
+
+      cards = data.structured || [];
+      if (cards.length === 0) {
+        showToast('No flashcards generated. Try providing more text.', '⚠️');
+        return;
+      }
+
+      currentIndex = 0;
+      updateDeckDisplay();
+
+      if (data.cached) {
+        tokenBadge.innerText = '⚡ Instant Cache Hit (0 Tokens)';
+      } else if (data.tokens_saved > 0) {
+        tokenBadge.innerText = `⚡ ~${data.tokens_saved} Tokens Saved`;
+      } else {
+        tokenBadge.innerText = '⚡ Token Optimized';
+      }
+
+      outputCard.style.display = 'block';
+      outputCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast(`Created ${cards.length} flashcards!`, '🃏');
+
+    } catch (err) {
+      skeleton.style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>⚡</span> Create Flashcard Deck';
+      form.submit();
+    }
+  });
+
+  if (cards.length > 0) {
+    updateDeckDisplay();
+  }
 </script>
-
-<!-- ================= STYLES ================= -->
-<style>
-.card {
-    background: var(--card-bg);
-    border-left: 5px solid var(--warning-color);
-    padding: 20px;
-    border-radius: 8px;
-    margin-top: 25px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.speaker-btn {
-    background: var(--warning-color);
-    color: var(--text-color);
-    border: none;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.speaker-btn:hover {
-    background: #e0a800;
-}
-
-.tts-text {
-    margin-top: 12px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-}
-</style>
-
 {% endblock %}

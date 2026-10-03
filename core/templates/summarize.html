@@ -1,124 +1,213 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Summarize Notes | Study Buddy{% endblock %}
+
 {% block content %}
+<!-- Top Form Card -->
+<div class="study-card card-accent-green">
+  <div class="card-header-row">
+    <div>
+      <h1 class="card-title"><span>✂️</span> Quick Revision Summarizer</h1>
+      <p class="card-subtitle">Convert lengthy chapters, research notes, or PDFs into high-yield revision summaries.</p>
+    </div>
+    <div class="token-badge">
+      <span>⚡</span> Token-Efficient Summarization
+    </div>
+  </div>
 
-<div class="card">
-    <h2>✂️ Summarize Text</h2>
-    <p>Paste your notes to get a quick, clear, and structured summary in English & Hinglish.</p>
+  <form method="POST" enctype="multipart/form-data" id="summarizeForm">
+    {% csrf_token %}
+    <input type="hidden" name="task" value="summarize">
 
-    <form method="POST">
-        {% csrf_token %}
-        <textarea name="user_input" rows="6" placeholder="Paste your notes here..."></textarea>
-        <button type="submit" class="btn btn-success">Generate Summary</button>
-    </form>
+    <div class="input-group">
+      <label class="input-label" for="user_input">Notes or Text to Summarize:</label>
+      <textarea 
+        name="user_input" 
+        id="user_input" 
+        class="input-textarea" 
+        rows="5" 
+        placeholder="Paste your long notes, lecture slides, or chapter excerpt here..."
+      >{{ user_input }}</textarea>
+    </div>
 
-    {% if error %}
-    <p style="color:red; margin-top:10px;">{{ error }}</p>
-    {% endif %}
+    <!-- Drag & Drop PDF Dropzone -->
+    <div class="input-group">
+      <label class="input-label">Or Upload Notes Document (PDF):</label>
+      <div class="file-dropzone" id="pdfDropzone">
+        <input type="file" name="pdf_file" id="pdfFileInput" accept=".pdf">
+        <div class="dropzone-content">
+          <span class="dropzone-icon" style="color:var(--success-color);">📑</span>
+          <span style="font-weight: 600;">Drag & drop your PDF notes here, or <span style="color:var(--success-color);">browse</span></span>
+          <span style="font-size: 0.82rem; color: var(--text-muted);">PDF text is compressed to save tokens & extract maximum core points</span>
+        </div>
+        <div class="file-name-preview" id="fileNamePreview"></div>
+      </div>
+    </div>
+
+    <!-- Options Bar -->
+    <div class="form-options-row">
+      <div class="option-item">
+        <label for="languageSelect" style="font-weight: 600;">🌐 Summary Language:</label>
+        <select name="language" id="languageSelect" class="select-custom">
+          <option value="Auto" {% if language == 'Auto' %}selected{% endif %}>Auto (Same as input)</option>
+          <option value="Hinglish" {% if language == 'Hinglish' %}selected{% endif %}>Hinglish (Easy Indian Student Style)</option>
+          <option value="English" {% if language == 'English' %}selected{% endif %}>English (Crisp Academic)</option>
+          <option value="Hindi" {% if language == 'Hindi' %}selected{% endif %}>Hindi (हिन्दी)</option>
+          <option value="Telugu" {% if language == 'Telugu' %}selected{% endif %}>Telugu (తెలుగు)</option>
+          <option value="Bhojpuri" {% if language == 'Bhojpuri' %}selected{% endif %}>Bhojpuri</option>
+        </select>
+      </div>
+
+      <div style="margin-left: auto; display: flex; gap: 10px;">
+        <button type="submit" id="summarizeSubmitBtn" class="btn btn-success">
+          <span>⚡</span> Generate Revision Summary
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {% if error %}
+  <div style="margin-top: 16px; padding: 12px 18px; border-radius: var(--radius-md); background: rgba(239, 68, 68, 0.12); color: var(--danger-color); border: 1px solid rgba(239, 68, 68, 0.25); font-weight: 600; display: flex; align-items: center; gap: 8px;">
+    <span>⚠️</span> {{ error }}
+  </div>
+  {% endif %}
 </div>
 
-{% if summary %}
-<div class="card">
-    <div class="header">
-        <h3>AI Summary</h3>
-        <button class="speaker-btn" onclick="toggleSpeak('summaryText', this)">🔊 Speak</button>
-    </div>
-    <div class="tts-text" id="summaryText">
-        {{ summary|linebreaksbr }}
-    </div>
+<!-- Loading Skeleton (During AJAX) -->
+<div class="loading-skeleton" id="loadingSkeleton">
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+    <div class="skeleton-pulse" style="width: 32px; height: 32px; border-radius: 50%;"></div>
+    <div class="skeleton-pulse" style="width: 200px; height: 22px;"></div>
+  </div>
+  <div class="skeleton-pulse" style="width: 92%;"></div>
+  <div class="skeleton-pulse" style="width: 85%;"></div>
+  <div class="skeleton-pulse" style="width: 90%;"></div>
 </div>
-{% endif %}
 
-<!-- ================= TEXT TO SPEECH ================= -->
+<!-- AI Summary Output Card -->
+<div class="study-card output-card card-accent-green" id="outputCard" {% if not summary_html %}style="display:none;"{% endif %}>
+  <div class="output-toolbar">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>🎯</span> Executive Revision Summary
+      </h2>
+      <span class="token-badge" id="outputTokenBadge">
+        {% if is_cached %}
+          ⚡ Instant Cache Hit (0 Tokens)
+        {% elif tokens_saved > 0 %}
+          ⚡ ~{{ tokens_saved }} Tokens Saved
+        {% else %}
+          ⚡ Token Optimized
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="toolbar-actions">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="copySummary()">
+        <span>📋</span> Copy Summary
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" id="ttsBtn" onclick="speakSummary()">
+        <span>🔊</span> Read Aloud
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">
+        <span>💾</span> Export PDF
+      </button>
+    </div>
+  </div>
+
+  <div class="study-content" id="studyContentArea">
+    {{ summary_html|safe }}
+  </div>
+
+  <!-- Hidden Plain Text for TTS -->
+  <div id="cleanTtsText" style="display: none;">
+    {{ clean_tts_text }}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-const synth = window.speechSynthesis;
-let currentUtterance = null;
-let isSpeaking = false;
+  setupDropzone('pdfDropzone', 'pdfFileInput', 'fileNamePreview');
 
-function toggleSpeak(textId, btn) {
-    if (isSpeaking) {
-        synth.cancel();
-        isSpeaking = false;
-        btn.innerText = "🔊 Speak";
-        return;
+  let currentPlainText = document.getElementById('cleanTtsText').innerText.trim();
+
+  function copySummary() {
+    const content = document.getElementById('studyContentArea').innerText;
+    copyCleanText(content);
+  }
+
+  function speakSummary() {
+    const ttsBtn = document.getElementById('ttsBtn');
+    const textToSpeak = currentPlainText || document.getElementById('studyContentArea').innerText;
+    handleTTS(textToSpeak, ttsBtn);
+  }
+
+  // Fast Async Submission
+  const form = document.getElementById('summarizeForm');
+  const submitBtn = document.getElementById('summarizeSubmitBtn');
+  const skeleton = document.getElementById('loadingSkeleton');
+  const outputCard = document.getElementById('outputCard');
+  const contentArea = document.getElementById('studyContentArea');
+  const ttsStorage = document.getElementById('cleanTtsText');
+  const tokenBadge = document.getElementById('outputTokenBadge');
+
+  form.addEventListener('submit', async (e) => {
+    const textVal = document.getElementById('user_input').value.trim();
+    const fileVal = document.getElementById('pdfFileInput').files[0];
+
+    if (!textVal && !fileVal) {
+      e.preventDefault();
+      showToast('Please enter text or select a PDF', '⚠️');
+      return;
     }
 
-    const el = document.getElementById(textId);
-    if (!el) return;
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>⏳</span> Summarizing...';
+    skeleton.style.display = 'block';
+    outputCard.style.display = 'none';
 
-    const text = el.innerText.trim();
-    if (!text) return;
+    try {
+      const formData = new FormData(form);
+      const response = await fetch('/api/study/', {
+        method: 'POST',
+        body: formData
+      });
 
-    currentUtterance = new SpeechSynthesisUtterance(text);
-    currentUtterance.lang = "en-IN";
-    currentUtterance.rate = 1;
-    currentUtterance.pitch = 1;
+      const data = await response.json();
+      skeleton.style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>⚡</span> Generate Revision Summary';
 
-    currentUtterance.onend = () => {
-        isSpeaking = false;
-        btn.innerText = "🔊 Speak";
-    };
+      if (!data.success) {
+        showToast(data.error || 'Failed to summarize notes', '⚠️');
+        return;
+      }
 
-    synth.speak(currentUtterance);
-    isSpeaking = true;
-    btn.innerText = "⏹ Stop";
-}
+      contentArea.innerHTML = data.html;
+      ttsStorage.innerText = data.clean_text;
+      currentPlainText = data.clean_text;
+
+      if (data.cached) {
+        tokenBadge.innerText = '⚡ Instant Cache Hit (0 Tokens)';
+      } else if (data.tokens_saved > 0) {
+        tokenBadge.innerText = `⚡ ~${data.tokens_saved} Tokens Saved`;
+      } else {
+        tokenBadge.innerText = '⚡ Token Optimized';
+      }
+
+      outputCard.style.display = 'block';
+      outputCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast('Summary ready!', '✨');
+
+    } catch (err) {
+      skeleton.style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>⚡</span> Generate Revision Summary';
+      form.submit();
+    }
+  });
 </script>
-
-<!-- ================= STYLES ================= -->
-<style>
-.card {
-    background: var(--card-bg);
-    border-left: 5px solid var(--success-color);
-    padding: 20px;
-    border-radius: 8px;
-    margin-top: 25px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-
-textarea {
-    width: 100%;
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    margin-bottom: 15px;
-}
-
-button.btn {
-    padding: 10px 18px;
-    border-radius: 5px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.btn-success { background: var(--success-color); color: white; border: none; }
-.btn:hover { opacity: 0.9; }
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.speaker-btn {
-    background: var(--success-color);
-    color: #fff;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.speaker-btn:hover {
-    background: #1e7e34;
-}
-
-.tts-text {
-    margin-top: 12px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-}
-</style>
-
 {% endblock %}

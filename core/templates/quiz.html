@@ -1,127 +1,354 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Interactive Quiz | Study Buddy{% endblock %}
+
 {% block content %}
+<!-- Top Form Card -->
+<div class="study-card card-accent-purple">
+  <div class="card-header-row">
+    <div>
+      <h1 class="card-title"><span>🧠</span> Interactive Practice Quiz</h1>
+      <p class="card-subtitle">Generate custom multiple choice exam questions from your study material.</p>
+    </div>
+    <div class="token-badge">
+      <span>⚡</span> Active Recall Engine
+    </div>
+  </div>
 
-<div class="card">
-    <h2>🧠 Quiz</h2>
-    <p>Generate practice questions from your study material in English & Hinglish.</p>
+  <form method="POST" enctype="multipart/form-data" id="quizForm">
+    {% csrf_token %}
+    <input type="hidden" name="task" value="quiz">
 
-    <form method="POST">
-        {% csrf_token %}
-        <textarea name="user_input" rows="8" placeholder="Paste text to generate a quiz..."></textarea>
-        <button type="submit" class="btn btn-purple">Generate Quiz</button>
-    </form>
+    <div class="input-group">
+      <label class="input-label" for="user_input">Study Material or Topic for Quiz:</label>
+      <textarea 
+        name="user_input" 
+        id="user_input" 
+        class="input-textarea" 
+        rows="5" 
+        placeholder="Paste notes, lecture content, or a syllabus topic to test yourself on..."
+      >{{ user_input }}</textarea>
+    </div>
 
-    {% if error %}
-    <p style="color:red; margin-top:10px;">{{ error }}</p>
-    {% endif %}
+    <!-- Drag & Drop PDF Dropzone -->
+    <div class="input-group">
+      <label class="input-label">Or Upload Material (PDF):</label>
+      <div class="file-dropzone" id="pdfDropzone">
+        <input type="file" name="pdf_file" id="pdfFileInput" accept=".pdf">
+        <div class="dropzone-content">
+          <span class="dropzone-icon" style="color:var(--purple-color);">📋</span>
+          <span style="font-weight: 600;">Drag & drop your PDF notes here, or <span style="color:var(--purple-color);">browse</span></span>
+          <span style="font-size: 0.82rem; color: var(--text-muted);">Quiz questions are generated from key concepts in your PDF</span>
+        </div>
+        <div class="file-name-preview" id="fileNamePreview"></div>
+      </div>
+    </div>
+
+    <!-- Options Bar -->
+    <div class="form-options-row">
+      <div class="option-item">
+        <label for="numQuestions" style="font-weight: 600;">🔢 Questions:</label>
+        <select name="num_questions" id="numQuestions" class="select-custom">
+          <option value="3" {% if num_questions == 3 %}selected{% endif %}>3 Questions (Fastest)</option>
+          <option value="5" {% if num_questions == 5 %}selected{% endif %}>5 Questions (Recommended)</option>
+          <option value="10" {% if num_questions == 10 %}selected{% endif %}>10 Questions (Comprehensive)</option>
+        </select>
+      </div>
+
+      <div class="option-item">
+        <label for="languageSelect" style="font-weight: 600;">🌐 Language:</label>
+        <select name="language" id="languageSelect" class="select-custom">
+          <option value="Auto" {% if language == 'Auto' %}selected{% endif %}>Auto (Same as input)</option>
+          <option value="Hinglish" {% if language == 'Hinglish' %}selected{% endif %}>Hinglish</option>
+          <option value="English" {% if language == 'English' %}selected{% endif %}>English</option>
+          <option value="Hindi" {% if language == 'Hindi' %}selected{% endif %}>Hindi</option>
+        </select>
+      </div>
+
+      <div style="margin-left: auto; display: flex; gap: 10px;">
+        <button type="submit" id="quizSubmitBtn" class="btn btn-purple">
+          <span>⚡</span> Generate Practice Quiz
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {% if error %}
+  <div style="margin-top: 16px; padding: 12px 18px; border-radius: var(--radius-md); background: rgba(239, 68, 68, 0.12); color: var(--danger-color); border: 1px solid rgba(239, 68, 68, 0.25); font-weight: 600; display: flex; align-items: center; gap: 8px;">
+    <span>⚠️</span> {{ error }}
+  </div>
+  {% endif %}
 </div>
 
-{% if quiz %}
-<div class="card">
-    <div class="header">
-        <h3>Generated Quiz</h3>
-        <button class="speaker-btn" onclick="toggleSpeak('quizText', this)">🔊 Speak</button>
-    </div>
-    <div class="tts-text" id="quizText">
-        {{ quiz|linebreaksbr }}
-    </div>
-    <button onclick="window.print()" class="btn btn-secondary" style="margin-top:15px;">💾 Save as PDF</button>
+<!-- Loading Skeleton -->
+<div class="loading-skeleton" id="loadingSkeleton">
+  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+    <div class="skeleton-pulse" style="width: 32px; height: 32px; border-radius: 50%;"></div>
+    <div class="skeleton-pulse" style="width: 240px; height: 22px;"></div>
+  </div>
+  <div class="skeleton-pulse" style="height: 48px; border-radius: 8px; margin-bottom: 15px;"></div>
+  <div class="skeleton-pulse" style="height: 48px; border-radius: 8px; margin-bottom: 15px;"></div>
+  <div class="skeleton-pulse" style="height: 48px; border-radius: 8px;"></div>
 </div>
-{% endif %}
 
-<!-- ================= TEXT TO SPEECH ================= -->
+<!-- Interactive Quiz Output Card -->
+<div class="study-card output-card card-accent-purple" id="outputCard" {% if not quiz_items %}style="display:none;"{% endif %}>
+  <div class="output-toolbar">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>🎯</span> Practice Exam Questions
+      </h2>
+      <span class="token-badge" id="outputTokenBadge">
+        {% if is_cached %}
+          ⚡ Instant Cache Hit (0 Tokens)
+        {% elif tokens_saved > 0 %}
+          ⚡ ~{{ tokens_saved }} Tokens Saved
+        {% else %}
+          ⚡ Structured Format
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="toolbar-actions">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="restartQuiz()">
+        <span>🔄</span> Reset Quiz
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">
+        <span>💾</span> Print / Save PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Live Score Banner -->
+  <div class="quiz-score-banner" id="scoreBanner" style="margin-bottom: 24px;">
+    <div>
+      <div class="score-title">Live Score Tracker</div>
+      <div style="font-size: 0.85rem; opacity: 0.9;">Click options to test your knowledge</div>
+    </div>
+    <div class="score-value" id="scoreDisplay">0 / 0 (0%)</div>
+  </div>
+
+  <!-- Quiz Questions Container -->
+  <div class="quiz-container" id="quizContainer">
+    {% for item in quiz_items %}
+    <div class="quiz-item-card" data-qid="{{ item.id }}" data-answer="{{ item.answer }}">
+      <div class="quiz-question-title">
+        <span style="color: var(--purple-color);">Q{{ forloop.counter }}.</span>
+        <span>{{ item.question }}</span>
+      </div>
+
+      <div class="quiz-options-list">
+        {% for opt in item.options %}
+        <button 
+          type="button" 
+          class="quiz-opt-btn" 
+          data-letter="{% cycle 'A' 'B' 'C' 'D' %}" 
+          onclick="selectQuizOption(this, '{{ item.id }}', '{{ item.answer }}')"
+        >
+          <span class="opt-badge">{% cycle 'A' 'B' 'C' 'D' %}</span>
+          <span>{{ opt }}</span>
+        </button>
+        {% endfor %}
+      </div>
+
+      <div class="quiz-explanation-box" id="expl-{{ item.id }}">
+        <strong>💡 Explanation:</strong> {{ item.explanation }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Hidden JSON for dynamic reload -->
+  <div id="quizJsonData" style="display: none;">
+    {{ quiz_json }}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-const synth = window.speechSynthesis;
-let currentUtterance = null;
-let isSpeaking = false;
+  setupDropzone('pdfDropzone', 'pdfFileInput', 'fileNamePreview');
 
-function toggleSpeak(textId, btn) {
-    if (isSpeaking) {
-        synth.cancel();
-        isSpeaking = false;
-        btn.innerText = "🔊 Speak";
-        return;
+  let totalQuestions = {{ quiz_items|length|default:0 }};
+  let answeredQuestions = 0;
+  let correctCount = 0;
+
+  function updateScoreBanner() {
+    const banner = document.getElementById('scoreDisplay');
+    if (!banner) return;
+    const pct = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+    banner.innerText = `${correctCount} / ${totalQuestions} (${pct}%)`;
+  }
+
+  function selectQuizOption(btn, qId, correctLetter) {
+    const card = btn.closest('.quiz-item-card');
+    if (card.dataset.answered === 'true') return; // Already answered
+
+    card.dataset.answered = 'true';
+    answeredQuestions++;
+    const selectedLetter = btn.dataset.letter;
+    const isCorrect = selectedLetter.toUpperCase() === correctLetter.toUpperCase();
+
+    // Disable all options in this card
+    const allBtns = card.querySelectorAll('.quiz-opt-btn');
+    allBtns.forEach(b => {
+      b.disabled = true;
+      if (b.dataset.letter.toUpperCase() === correctLetter.toUpperCase()) {
+        b.classList.add('correct');
+      }
+    });
+
+    if (isCorrect) {
+      btn.classList.add('correct');
+      correctCount++;
+      showToast('Correct! Great job 🎯', '🎉');
+    } else {
+      btn.classList.add('incorrect');
+      showToast(`Incorrect! Correct option was ${correctLetter}`, '❌');
     }
 
-    const el = document.getElementById(textId);
-    if (!el) return;
+    // Reveal explanation
+    const explBox = document.getElementById(`expl-${qId}`);
+    if (explBox) explBox.style.display = 'block';
 
-    const text = el.innerText.trim();
-    if (!text) return;
+    updateScoreBanner();
+  }
 
-    currentUtterance = new SpeechSynthesisUtterance(text);
-    currentUtterance.lang = "en-IN";
-    currentUtterance.rate = 1;
-    currentUtterance.pitch = 1;
+  function restartQuiz() {
+    answeredQuestions = 0;
+    correctCount = 0;
+    updateScoreBanner();
 
-    currentUtterance.onend = () => {
-        isSpeaking = false;
-        btn.innerText = "🔊 Speak";
-    };
+    const cards = document.querySelectorAll('.quiz-item-card');
+    cards.forEach(card => {
+      card.dataset.answered = 'false';
+      const btns = card.querySelectorAll('.quiz-opt-btn');
+      btns.forEach(b => {
+        b.disabled = false;
+        b.classList.remove('correct', 'incorrect');
+      });
+      const expl = card.querySelector('.quiz-explanation-box');
+      if (expl) expl.style.display = 'none';
+    });
 
-    synth.speak(currentUtterance);
-    isSpeaking = true;
-    btn.innerText = "⏹ Stop";
-}
+    showToast('Quiz reset! Try again.', '🔄');
+  }
+
+  function renderQuizItems(items) {
+    const container = document.getElementById('quizContainer');
+    container.innerHTML = '';
+    totalQuestions = items.length;
+    answeredQuestions = 0;
+    correctCount = 0;
+    updateScoreBanner();
+
+    const letters = ['A', 'B', 'C', 'D'];
+
+    items.forEach((item, idx) => {
+      const card = document.createElement('div');
+      card.className = 'quiz-item-card';
+      card.dataset.qid = item.id || (idx + 1);
+      card.dataset.answer = item.answer || 'A';
+
+      let optionsHtml = '';
+      (item.options || []).forEach((opt, optIdx) => {
+        const letter = letters[optIdx] || 'A';
+        optionsHtml += `
+          <button type="button" class="quiz-opt-btn" data-letter="${letter}" onclick="selectQuizOption(this, '${item.id || (idx + 1)}', '${item.answer || 'A'}')">
+            <span class="opt-badge">${letter}</span>
+            <span>${opt}</span>
+          </button>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="quiz-question-title">
+          <span style="color: var(--purple-color);">Q${idx + 1}.</span>
+          <span>${item.question}</span>
+        </div>
+        <div class="quiz-options-list">
+          ${optionsHtml}
+        </div>
+        <div class="quiz-explanation-box" id="expl-${item.id || (idx + 1)}">
+          <strong>💡 Explanation:</strong> ${item.explanation || 'Key concept tested in syllabus.'}
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  // Fast Async Submission
+  const form = document.getElementById('quizForm');
+  const submitBtn = document.getElementById('quizSubmitBtn');
+  const skeleton = document.getElementById('loadingSkeleton');
+  const outputCard = document.getElementById('outputCard');
+  const tokenBadge = document.getElementById('outputTokenBadge');
+
+  form.addEventListener('submit', async (e) => {
+    const textVal = document.getElementById('user_input').value.trim();
+    const fileVal = document.getElementById('pdfFileInput').files[0];
+
+    if (!textVal && !fileVal) {
+      e.preventDefault();
+      showToast('Please enter text or select a PDF', '⚠️');
+      return;
+    }
+
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>⏳</span> Generating Quiz...';
+    skeleton.style.display = 'block';
+    outputCard.style.display = 'none';
+
+    try {
+      const formData = new FormData(form);
+      const response = await fetch('/api/study/', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      skeleton.style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>⚡</span> Generate Practice Quiz';
+
+      if (!data.success) {
+        showToast(data.error || 'Failed to generate quiz', '⚠️');
+        return;
+      }
+
+      const structuredItems = data.structured || [];
+      if (structuredItems.length === 0) {
+        showToast('No quiz questions generated. Try refining your text.', '⚠️');
+        return;
+      }
+
+      renderQuizItems(structuredItems);
+
+      if (data.cached) {
+        tokenBadge.innerText = '⚡ Instant Cache Hit (0 Tokens)';
+      } else if (data.tokens_saved > 0) {
+        tokenBadge.innerText = `⚡ ~${data.tokens_saved} Tokens Saved`;
+      } else {
+        tokenBadge.innerText = '⚡ Token Optimized';
+      }
+
+      outputCard.style.display = 'block';
+      outputCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast(`Generated ${structuredItems.length} practice questions!`, '🎯');
+
+    } catch (err) {
+      skeleton.style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>⚡</span> Generate Practice Quiz';
+      form.submit();
+    }
+  });
+
+  // Initial score update
+  if (totalQuestions > 0) {
+    updateScoreBanner();
+  }
 </script>
-
-<!-- ================= STYLES ================= -->
-<style>
-.card {
-    background: var(--card-bg);
-    border-left: 5px solid var(--purple-color);
-    padding: 20px;
-    border-radius: 8px;
-    margin-top: 25px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.speaker-btn {
-    background: var(--purple-color);
-    color: var(--text-color);
-    border: none;
-    padding: 6px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.speaker-btn:hover {
-    background: #5936a2;
-}
-
-.tts-text {
-    margin-top: 12px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-}
-
-textarea {
-    width: 100%;
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    margin-bottom: 15px;
-}
-
-button.btn {
-    padding: 10px 18px;
-    border-radius: 5px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.btn-purple { background: var(--purple-color); color: white; border: none; }
-.btn-secondary { background: #6c757d; color: white; border: none; }
-
-.btn:hover { opacity: 0.9; }
-</style>
-
 {% endblock %}

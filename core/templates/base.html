@@ -1,151 +1,214 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Study Genie</title>
-<link rel="icon" href="{% static 'images/favicon.ico' %}">
-<style>
-    :root {
-        --primary-color: #0078d7;
-        --secondary-color: #f3f3f3;
-        --text-color: #000;
-        --card-bg: #fff;
-        --card-border: #0078d7;
-        --footer-bg: #0078d7;
-        --footer-text: #fff;
-        --transition-speed: 0.3s;
-    }
-
-    [data-theme="dark"] {
-        --primary-color: #0078d7;
-        --secondary-color: #1e1e1e;
-        --text-color: #f0f0f0;
-        --card-bg: #252526;
-        --card-border: #0078d7;
-        --footer-bg: #1e1e1e;
-        --footer-text: #fff;
-    }
-
-    /* Reset */
-    * { margin:0; padding:0; box-sizing:border-box; }
-    html, body { height:100%; }
-    body {
-        display: flex;
-        flex-direction: column;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: var(--secondary-color);
-        color: var(--text-color);
-        transition: background-color var(--transition-speed), color var(--transition-speed);
-        min-height: 100vh;
-    }
-
-    a { text-decoration:none; color:var(--primary-color); transition: all 0.2s ease; }
-    a:hover { opacity:0.8; }
-
-    /* Navbar */
-    nav {
-        background: var(--card-bg);
-        padding: 12px 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        z-index:1000;
-    }
-    nav .nav-links a { margin:0 10px; font-weight:600; }
-    nav .theme-toggle {
-        cursor:pointer; padding:6px 12px; border-radius:5px;
-        border:1px solid var(--primary-color);
-        background:var(--primary-color); color:#fff; font-weight:bold;
-        transition: all 0.2s ease;
-    }
-    nav .theme-toggle:hover { opacity:0.9; }
-
-    /* Container */
-    .container { max-width:1000px; flex:1; margin:30px auto; padding:0 20px; }
-
-    /* Card */
-    .card {
-        background: var(--card-bg);
-        border-left:5px solid var(--card-border);
-        padding:20px; border-radius:8px;
-        margin-bottom:20px;
-        box-shadow:0 2px 6px rgba(0,0,0,0.05);
-        transition: background var(--transition-speed), border-color var(--transition-speed);
-    }
-
-    /* Buttons */
-    .btn {
-        padding:10px 20px; border-radius:5px; border:none;
-        font-weight:bold; cursor:pointer; color:#fff; margin-right:8px;
-        transition: opacity 0.2s ease;
-    }
-    .btn:hover { opacity:0.85; }
-    .btn-primary { background: var(--primary-color); }
-    .btn-success { background: #28a745; }
-    .btn-purple { background: #6f42c1; }
-    .btn-warning { background: #ffc107; color:#000; }
-    .btn-pdf { background:#6c757d; margin-top:10px; }
-
-    /* Footer */
-    footer {
-        background: var(--footer-bg);
-        color: var(--footer-text);
-        text-align:center;
-        padding:15px 10px;
-        font-size:0.9rem;
-    }
-
-    /* Responsive */
-    @media (max-width:768px){
-        nav { flex-direction: column; align-items:flex-start; }
-        nav .nav-links { margin-bottom:10px; }
-        nav .nav-links a { margin:5px 0; }
-    }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Study Buddy | AI Tutor for Indian Students{% endblock %}</title>
+  <meta name="description" content="AI Study Buddy powered by LangGraph & LangChain. Explain topics, generate quick revision notes, interactive quizzes, and 3D flashcards in English & Hinglish.">
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧞‍♂️</text></svg>">
 </head>
 <body>
 
-<nav>
-    <div class="nav-links">
-        <a href="{% url 'home' %}">🏠 Home</a>
-        <a href="{% url 'explain' %}">📘 Explain</a>
-        <a href="{% url 'summarize' %}">📘 Summarize</a>
-        <a href="{% url 'quiz' %}">🧠 Quiz</a>
-        <a href="{% url 'flashcards' %}">🃏 Flashcards</a>
-    </div>
-    <button class="theme-toggle" id="themeToggle">🌙 Dark Mode</button>
-</nav>
+  <!-- ================= TOP NAVBAR ================= -->
+  <header class="navbar-wrapper">
+    <nav class="navbar" aria-label="Main Navigation">
+      <a href="{% url 'home' %}" class="brand" title="Study Buddy Home">
+        <span class="brand-icon">⚡</span>
+        <span>Study<span class="brand-gradient">Buddy</span></span>
+      </a>
 
-<div class="container">
+      <div class="nav-menu">
+        <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+          <span>🏠</span> Home
+        </a>
+        <a href="{% url 'explain' %}" class="nav-link {% if request.resolver_match.url_name == 'explain' %}active{% endif %}">
+          <span>📘</span> Explain
+        </a>
+        <a href="{% url 'summarize' %}" class="nav-link {% if request.resolver_match.url_name == 'summarize' %}active{% endif %}">
+          <span>✂️</span> Summarize
+        </a>
+        <a href="{% url 'quiz' %}" class="nav-link {% if request.resolver_match.url_name == 'quiz' %}active{% endif %}">
+          <span>🧠</span> Quiz
+        </a>
+        <a href="{% url 'flashcards' %}" class="nav-link {% if request.resolver_match.url_name == 'flashcards' %}active{% endif %}">
+          <span>🃏</span> Flashcards
+        </a>
+      </div>
+
+      <div class="nav-actions">
+        <div class="token-badge" title="Token Optimization Active with LangGraph & Caching">
+          <span>⚡</span>
+          <span id="globalTokenBadge">Token Saver Active</span>
+        </div>
+        <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle Theme" aria-label="Toggle Dark Mode">
+          🌙
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="main-content">
     {% block content %}
     {% endblock %}
+  </main>
 
-    {% if explanation or summary or quiz or flashcards %}
-        <button class="btn btn-pdf" onclick="window.print()">💾 Save as PDF</button>
-    {% endif %}
-</div>
+  <!-- ================= TOAST NOTIFICATION CONTAINER ================= -->
+  <div id="toastNotice" class="toast-notice" role="alert" aria-live="polite">
+    <span id="toastIcon">✨</span>
+    <span id="toastMessage">Action completed</span>
+  </div>
 
-<footer>
-    © 2026 Lakshya Kumar | Project: Study Genie | AI-Powered Study Assistant
-</footer>
+  <!-- ================= FOOTER ================= -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div>
+        <strong>Study Buddy</strong> • AI Tutor powered by LangGraph & LangChain
+      </div>
+      <div>
+        ⚡ Fast Responses • 🇮🇳 English & Hinglish • 🎯 Exam Focused
+      </div>
+    </div>
+  </footer>
 
-<script>
-    // Theme toggle
-    const toggleBtn = document.getElementById('themeToggle');
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    toggleBtn.innerText = savedTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
-    toggleBtn.addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme');
-        const nextTheme = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', nextTheme);
-        localStorage.setItem('theme', nextTheme);
-        toggleBtn.innerText = nextTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+  <!-- ================= GLOBAL JAVASCRIPT UTILITIES ================= -->
+  <script>
+    // 1. Theme Management (Light / Dark)
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const storedTheme = localStorage.getItem('study_buddy_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', storedTheme);
+    themeToggleBtn.innerText = storedTheme === 'dark' ? '☀️' : '🌙';
+
+    themeToggleBtn.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', nextTheme);
+      localStorage.setItem('study_buddy_theme', nextTheme);
+      themeToggleBtn.innerText = nextTheme === 'dark' ? '☀️' : '🌙';
+      showToast(nextTheme === 'dark' ? '🌙 Dark Mode Activated' : '☀️ Light Mode Activated');
     });
-</script>
 
+    // 2. Global Toast System
+    function showToast(message, icon = '✨') {
+      const toast = document.getElementById('toastNotice');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIco = document.getElementById('toastIcon');
+      if (!toast) return;
+
+      toastMsg.innerText = message;
+      toastIco.innerText = icon;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // 3. Global Copy To Clipboard
+    function copyCleanText(textToCopy) {
+      if (!textToCopy) return;
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        showToast('Copied to clipboard!', '📋');
+      }).catch(err => {
+        showToast('Failed to copy', '⚠️');
+      });
+    }
+
+    // 4. Global Text-to-Speech (TTS) Engine
+    const synth = window.speechSynthesis;
+    let ttsUtterance = null;
+    let ttsSpeaking = false;
+
+    function handleTTS(plainText, btnElement, speed = 1.0) {
+      if (!synth) {
+        showToast('Speech not supported on this browser', '⚠️');
+        return;
+      }
+
+      if (ttsSpeaking) {
+        synth.cancel();
+        ttsSpeaking = false;
+        if (btnElement) btnElement.innerHTML = '<span>🔊</span> Read Aloud';
+        showToast('Speech stopped', '⏹');
+        return;
+      }
+
+      if (!plainText || !plainText.trim()) {
+        showToast('No text to read', '⚠️');
+        return;
+      }
+
+      synth.cancel(); // Stop any pending speech
+      ttsUtterance = new SpeechSynthesisUtterance(plainText);
+      ttsUtterance.rate = speed;
+      ttsUtterance.lang = 'en-IN'; // Indian English / Hinglish accent
+
+      // Voice selection preference
+      const voices = synth.getVoices();
+      const inVoice = voices.find(v => v.lang.includes('en-IN') || v.name.includes('India'));
+      if (inVoice) ttsUtterance.voice = inVoice;
+
+      ttsUtterance.onstart = () => {
+        ttsSpeaking = true;
+        if (btnElement) btnElement.innerHTML = '<span>⏹</span> Stop Speech';
+        showToast('Reading aloud...', '🔊');
+      };
+
+      ttsUtterance.onend = () => {
+        ttsSpeaking = false;
+        if (btnElement) btnElement.innerHTML = '<span>🔊</span> Read Aloud';
+      };
+
+      ttsUtterance.onerror = () => {
+        ttsSpeaking = false;
+        if (btnElement) btnElement.innerHTML = '<span>🔊</span> Read Aloud';
+      };
+
+      synth.speak(ttsUtterance);
+    }
+
+    // File Drag and Drop Helper
+    function setupDropzone(dropzoneId, inputId, previewId) {
+      const dropzone = document.getElementById(dropzoneId);
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      if (!dropzone || !input) return;
+
+      ['dragenter', 'dragover'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+          e.preventDefault();
+          dropzone.classList.add('dragover');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+          e.preventDefault();
+          dropzone.classList.remove('dragover');
+        });
+      });
+
+      input.addEventListener('change', () => {
+        if (input.files && input.files[0]) {
+          const file = input.files[0];
+          if (preview) {
+            preview.style.display = 'inline-flex';
+            preview.innerText = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+          }
+        }
+      });
+    }
+  </script>
+
+  {% block extra_js %}
+  {% endblock %}
 </body>
 </html>
