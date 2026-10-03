@@ -301,8 +301,9 @@ def study_engine_node(state: StudyBuddyState) -> Dict[str, Any]:
     api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "")
 
     try:
+        model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model=model_name,
             google_api_key=api_key,
             temperature=0.3,
             max_output_tokens=2048,
@@ -317,6 +318,8 @@ def study_engine_node(state: StudyBuddyState) -> Dict[str, Any]:
         err_msg = str(e)
         if any(w in err_msg.lower() for w in ["429", "quota", "resource_exhausted"]):
             err_msg = "Daily API quota limit reached. Please try again shortly."
+        elif "leaked" in err_msg.lower() or "permission_denied" in err_msg.lower():
+            err_msg = "Gemini API Key is invalid or was revoked/reported leaked. Please get a fresh API key from Google AI Studio (https://aistudio.google.com/app/apikey)."
         return {"raw_response": "", "error": f"Study Buddy Engine: {err_msg}"}
 
 
