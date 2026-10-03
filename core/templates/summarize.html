@@ -12,7 +12,7 @@
       <p class="card-subtitle">Convert lengthy chapters, research notes, or PDFs into high-yield revision summaries.</p>
     </div>
     <div class="token-badge">
-      <span>⚡</span> Token-Efficient Summarization
+      <span>⚡</span> High-Yield Revision
     </div>
   </div>
 
@@ -94,11 +94,9 @@
       </h2>
       <span class="token-badge" id="outputTokenBadge">
         {% if is_cached %}
-          ⚡ Instant Cache Hit (0 Tokens)
-        {% elif tokens_saved > 0 %}
-          ⚡ ~{{ tokens_saved }} Tokens Saved
+          ⚡ Instant Response (Cached)
         {% else %}
-          ⚡ Token Optimized
+          ⚡ Key Revision Points
         {% endif %}
       </span>
     </div>
@@ -191,11 +189,9 @@
       currentPlainText = data.clean_text;
 
       if (data.cached) {
-        tokenBadge.innerText = '⚡ Instant Cache Hit (0 Tokens)';
-      } else if (data.tokens_saved > 0) {
-        tokenBadge.innerText = `⚡ ~${data.tokens_saved} Tokens Saved`;
+        tokenBadge.innerText = '⚡ Instant Response (Cached)';
       } else {
-        tokenBadge.innerText = '⚡ Token Optimized';
+        tokenBadge.innerText = '⚡ Key Revision Points';
       }
 
       outputCard.style.display = 'block';

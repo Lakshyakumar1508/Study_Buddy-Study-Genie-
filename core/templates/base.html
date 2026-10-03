@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Study Buddy | AI Tutor for Indian Students{% endblock %}</title>
-  <meta name="description" content="AI Study Buddy powered by LangGraph & LangChain. Explain topics, generate quick revision notes, interactive quizzes, and 3D flashcards in English & Hinglish.">
+  <meta name="description" content="AI Study Buddy for Students. Explain topics, generate quick revision notes, interactive quizzes, and 3D flashcards in English & Hinglish.">
   
   <!-- Modern Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="{% static 'style.css' %}">
+  <link rel="stylesheet" href="{% static 'style.css' %}?v=2.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧞‍♂️</text></svg>">
 </head>
 <body>
@@ -45,10 +45,6 @@
       </div>
 
       <div class="nav-actions">
-        <div class="token-badge" title="Token Optimization Active with LangGraph & Caching">
-          <span>⚡</span>
-          <span id="globalTokenBadge">Token Saver Active</span>
-        </div>
         <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle Theme" aria-label="Toggle Dark Mode">
           🌙
         </button>
@@ -72,7 +68,7 @@
   <footer class="footer">
     <div class="footer-content">
       <div>
-        <strong>Study Buddy</strong> • AI Tutor powered by LangGraph & LangChain
+        <strong>Study Buddy</strong> • AI Tutor for Smart Learning
       </div>
       <div>
         ⚡ Fast Responses • 🇮🇳 English & Hinglish • 🎯 Exam Focused

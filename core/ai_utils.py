@@ -211,7 +211,7 @@ def input_optimizer_node(state: StudyBuddyState) -> Dict[str, Any]:
     
     # Token-saving cap: Max 7,000 characters (~1,750 tokens)
     if len(cleaned) > 7000:
-        cleaned = cleaned[:7000] + "\n\n[Note: Text clipped to save tokens and maintain optimal study focus]"
+        cleaned = cleaned[:7000] + "\n\n[Note: Text clipped to maintain optimal study focus]"
 
     chars_trimmed = max(0, original_len - len(cleaned))
     saved_tokens = chars_trimmed // 4
@@ -258,7 +258,7 @@ def study_engine_node(state: StudyBuddyState) -> Dict[str, Any]:
             "Ensure all bold text has clean matched markdown with no loose unclosed asterisks."
         ),
         "summarize": (
-            "You are Study Buddy. Create a high-yield, token-efficient revision summary. "
+            "You are Study Buddy. Create a high-yield, exam-focused revision summary. "
             f"{lang_instruction} "
             "Start directly with: "
             "## 📌 Quick TL;DR\n(2 concise sentences)\n\n"
