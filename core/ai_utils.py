@@ -36,8 +36,46 @@ def _generate_cache_key(task: str, text: str, num_items: int, language: str) -> 
     normalized = f"{task}:{language}:{num_items}:{text.strip().lower()}"
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
+def _extract_text_from_response(content: Any) -> str:
+    """
+    Safely extracts clean plain text from LangChain / Google GenAI response content.
+    Handles str, list of dicts (e.g. [{'type': 'text', 'text': '...', 'extras': ...}]),
+    and objects with a text attribute. Strips out raw signatures/metadata.
+    """
+    if isinstance(content, str):
+        text = content
+    elif isinstance(content, list):
+        pieces = []
+        for part in content:
+            if isinstance(part, str):
+                pieces.append(part)
+            elif isinstance(part, dict):
+                pieces.append(str(part.get("text", "")))
+            elif hasattr(part, "text"):
+                pieces.append(str(getattr(part, "text", "")))
+            else:
+                pieces.append(str(part))
+        text = "".join(pieces)
+    elif hasattr(content, "text"):
+        text = str(getattr(content, "text", ""))
+    else:
+        text = str(content)
+
+    # Extra safety: If string starts like a Python literal representation of list of dicts
+    if text.startswith("[{'type': 'text'") or text.startswith('[{"type": "text"'):
+        try:
+            import ast
+            parsed = ast.literal_eval(text)
+            if isinstance(parsed, list):
+                text = "".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in parsed)
+        except Exception:
+            pass
+
+    return text.strip()
+
 def _clean_markdown_to_plain_text(md_text: str) -> str:
     """Strips all markdown formatting (*, #, _, `, etc.) for clean Text-to-Speech."""
+    md_text = _extract_text_from_response(md_text)
     text = re.sub(r'#+\s*', '', md_text)
     text = re.sub(r'\*{1,3}([^*]+?)\*{1,3}', r'\1', text)
     text = re.sub(r'_{1,3}([^_]+?)_{1,3}', r'\1', text)
@@ -52,6 +90,7 @@ def _clean_markdown_html(md_text: str) -> str:
     Cleans raw markdown formatting quirks (removes stray unclosed asterisks)
     and converts to modern, rich semantic HTML.
     """
+    md_text = _extract_text_from_response(md_text)
     # Fix dangling asterisks like '** word' without close
     cleaned = re.sub(r'\*\*\s*([^\*\n]+?)\s*\*\*', r'**\1**', md_text)
     # Fix solitary unclosed bold at end of lines
@@ -312,7 +351,7 @@ def study_engine_node(state: StudyBuddyState) -> Dict[str, Any]:
             SystemMessage(content=sys_msg),
             HumanMessage(content=content)
         ])
-        raw_text = str(response.content)
+        raw_text = _extract_text_from_response(response.content)
         return {"raw_response": raw_text}
     except Exception as e:
         err_msg = str(e)
@@ -343,7 +382,7 @@ def format_cleaner_node(state: StudyBuddyState) -> Dict[str, Any]:
             "structured_data": None
         }
 
-    raw = state.get("raw_response", "").strip()
+    raw = _extract_text_from_response(state.get("raw_response", ""))
     task = state.get("task", "explain")
     num_items = state.get("num_items", 5)
 
